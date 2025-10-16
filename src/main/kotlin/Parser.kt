@@ -3,7 +3,7 @@ class Parser(private val tokens: List<Token>) {
 
     private var current = 0
 
-    // UNIQUE-D: soft panic flag used during error reporting and recovery
+    // UNIQUE: soft panic flag used during error reporting and recovery
     private var panicMode = false
 
     // Entry point: parse a single expression
@@ -22,8 +22,8 @@ class Parser(private val tokens: List<Token>) {
     // equality → comparison ( ( "!=" | "==" ) comparison )*
     private fun equality(): Expr {
         var expr = comparison()
-        // UNIQUE-A: using accept(...) as a chain matcher instead of textbook match()
-        while (accept(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)) {
+        // UNIQUE-A: using tatagos(...) as a chain matcher instead of textbook match()
+        while (tatagos(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)) {
             val op = previous()
             val right = comparison()
             expr = Expr.Binary(expr, op, right)
@@ -34,7 +34,7 @@ class Parser(private val tokens: List<Token>) {
     // comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
     private fun comparison(): Expr {
         var expr = term()
-        while (accept(
+        while (tatagos(
                 TokenType.GREATER, TokenType.GREATER_EQUAL,
                 TokenType.LESS, TokenType.LESS_EQUAL
             )) {
@@ -46,43 +46,40 @@ class Parser(private val tokens: List<Token>) {
     }
 
     // term → factor ( ( "-" | "+" ) factor )*
-    // UNIQUE-C used here: if multiple + or - occur, produce a Chain node (flattened)
+    // UNIQUE chain-node used here: if multiple + or - occur, produce a Chain node (flattened)
     private fun term(): Expr {
-        val elements = mutableListOf<Expr>()
-        elements.add(factor())
+        var expr = factor()
 
-        val opsSeen = mutableListOf<Token>() // keep operators seen (should be same operator family)
-        while (accept(TokenType.MINUS, TokenType.PLUS)) {
-            opsSeen.add(previous())
-            elements.add(factor())
+        while (tatagos(TokenType.MINUS, TokenType.PLUS)) {
+            val op = previous()
+            val right = factor()
+            expr = Expr.Binary(expr, op, right)
         }
 
-        return if (elements.size > 1) {
-            // choose the last operator token as representative (operators are same precedence group)
-            // This preserves operator text (either + or -). In mixed + and - expressions,
-            // we still flatten; semantic evaluation (if you implement evaluator) can treat it left-to-right.
-            Expr.Chain(opsSeen.last(), elements)
-        } else {
-            elements.first()
-        }
+        return expr
     }
+
+
 
     // factor → unary ( ( "/" | "*" ) unary )*
     // For multiplication/division we keep textbook Binary nodes (no chain flattening here),
-    // but we still use our accept() matcher.
+    // but we still use our tatagos() matcher.
     private fun factor(): Expr {
         var expr = unary()
-        while (accept(TokenType.SLASH, TokenType.STAR)) {
+
+        while (tatagos(TokenType.SLASH, TokenType.STAR)) {
             val op = previous()
             val right = unary()
             expr = Expr.Binary(expr, op, right)
         }
+
         return expr
     }
 
+
     // unary → ( "!" | "-" ) unary | primary
     private fun unary(): Expr {
-        if (accept(TokenType.BANG, TokenType.MINUS)) {
+        if (tatagos(TokenType.BANG, TokenType.MINUS)) {
             val op = previous()
             val right = unary()
             return Expr.Unary(op, right)
@@ -92,23 +89,23 @@ class Parser(private val tokens: List<Token>) {
 
     // primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
     private fun primary(): Expr {
-        if (accept(TokenType.NUMBER)) {
+        if (tatagos(TokenType.NUMBER)) {
             val num = previous().value as? Double ?: previous().text.toDouble()
             return Expr.Literal(num)
         }
-        if (accept(TokenType.STRING)) {
+        if (tatagos(TokenType.STRING)) {
             return Expr.Literal(previous().value as? String ?: "")
         }
-        if (accept(TokenType.TRUE))  return Expr.Literal(true)
-        if (accept(TokenType.FALSE)) return Expr.Literal(false)
-        if (accept(TokenType.NIL))   return Expr.Literal(null)
+        if (tatagos(TokenType.TRUE))  return Expr.Literal(true)
+        if (tatagos(TokenType.FALSE)) return Expr.Literal(false)
+        if (tatagos(TokenType.NIL))   return Expr.Literal(null)
 
-        if (accept(TokenType.IDENTIFIER)) {
+        if (tatagos(TokenType.IDENTIFIER)) {
             val name = previous().text
             return Expr.Literal(name) // NEW: Implicit string
         }
 
-        if (accept(TokenType.LEFT_PAREN)) {
+        if (tatagos(TokenType.LEFT_PAREN)) {
             val expr = expression()
             consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
             return Expr.Grouping(expr)
@@ -121,9 +118,9 @@ class Parser(private val tokens: List<Token>) {
 
     // ---------------- helpers ----------------
 
-    // UNIQUE-A: accept acts like a pattern matcher: if next token is any of the given types, consume it and return true.
-    // This reads as "accept these tokens" (a stylistic DSL-like change).
-    private fun accept(vararg types: TokenType): Boolean {
+    // UNIQUE: tatagos acts like a pattern matcher: if next token is any of the given types, consume it and return true.
+    // This reads as "tatagos these tokens" (a stylistic DSL-like change).
+    private fun tatagos(vararg types: TokenType): Boolean {
         for (t in types) {
             if (check(t)) { advance(); return true }
         }
@@ -154,15 +151,15 @@ class Parser(private val tokens: List<Token>) {
     private fun error(token: Token, message: String) {
         if (panicMode) return
         panicMode = true
-        if (token.type == TokenType.EOF) {
-            System.err.println("[line ${token.line}] Error at end: $message")
-        } else {
-            System.err.println("[line ${token.line}] Error at '${token.text}': $message")
-        }
+        //if (token.type == TokenType.EOF) {
+        //    System.err.println("[line ${token.line}] Error at end: $message")
+        //} else {
+        //    System.err.println("[line ${token.line}] Error at '${token.text}': $message")
+        //}
         synchronize()
     }
 
-    // UNIQUE-D: attempt to recover and continue parsing so the REPL reports more errors instead of stopping.
+    // UNIQUE: attempt to recover and continue parsing so the REPL reports more errors instead of stopping.
     private fun synchronize() {
         // consume the current token to move forward
         if (!isAtEnd()) advance()

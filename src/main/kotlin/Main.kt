@@ -17,16 +17,16 @@ fun main() {
         val scanner = Scanner(input)
         val tokens = scanner.scanTokens()
 
-        println("Tatagos ba tong mga tokens mo sahh:")
-        for (token in tokens) {
-            println("  ${token.type} | '${token.text}' | ${token.value ?: "null"} | line=${token.line}")
-        }
+        //println("Tatagos ba tong mga tokens mo sahh:")
+        //for (token in tokens) {
+        //    println("  ${token.type} | '${token.text}' | ${token.value ?: "null"} | line=${token.line}")
+        //}
 
-        println()
+        //println()
         val parser = Parser(tokens)
-        val expr = parser.parse()
-        val pretty = AstPrinter().print(expr)
-        println("AST: $pretty")
+        val expr = parser.parse() //whole expression
+        val AST = AstStringer().print(expr)
+        println("AST: $AST")
         println()
     }
 
