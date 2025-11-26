@@ -25,8 +25,10 @@ fun main() {
         //println()
         val parser = Parser(tokens)
         val expr = parser.parse() //whole expression
-        val AST = AstStringer().print(expr)
-        println("AST: $AST")
+        //val AST = AstStringer().print(expr)
+        //println("AST: $AST")
+        val value = Evaluator().evaluate(expr)
+        println(value)
         println()
     }
 
