@@ -1,43 +1,59 @@
 class Evaluator {
 
-    // global / current environment
     private var environment = Environment()
 
-    // ENTRY: run a whole program
-    fun execute(statements: List<Stmt>) {
-        for (stmt in statements) {
-            execute(stmt)
+    // ENTRY: execute a Program node (root of parse tree)
+    fun execute(program: Stmt.Program) {
+        println("DEBUG: executing program...")  // keep for now
+
+        var current: Stmt? = program.first
+        while (current != null) {
+            println("DEBUG stmt: ${current::class.simpleName}")  // see what we visit
+            executeSingle(current)
+            current = when (current) {
+                is Stmt.Expression -> current.next
+                is Stmt.Print -> current.next
+                is Stmt.Var -> current.next
+                is Stmt.Block -> current.next
+                is Stmt.Program -> null
+            }
         }
     }
 
-    // run a single statement
-    private fun execute(stmt: Stmt) {
+    private fun executeSingle(stmt: Stmt) {
         when (stmt) {
-            is Stmt.Expression -> evaluate(stmt.expr)          // just evaluate, ignore result
-            is Stmt.Print -> println(stringify(evaluate(stmt.expr)))
+            is Stmt.Program -> execute(stmt)
+            is Stmt.Expression -> {
+                evaluate(stmt.expr)
+            }
+
+            is Stmt.Print -> {
+                val value = evaluate(stmt.expr)
+                println(stringify(value))
+            }
+
             is Stmt.Var -> {
                 val value = stmt.initializer?.let { evaluate(it) }
                 environment.define(stmt.name.text, value)
             }
-            is Stmt.Block -> executeBlock(stmt.statements, Environment(environment))
+
+            is Stmt.Block -> {
+                executeBlock(stmt.body, Environment(environment))
+            }
         }
     }
 
-    // enter a new block scope
-    fun executeBlock(statements: List<Stmt>, newEnv: Environment) {
+    private fun executeBlock(body: Stmt.Program, newEnv: Environment) {
         val previous = environment
         try {
             environment = newEnv
-            for (stmt in statements) execute(stmt)
+            execute(body)
         } finally {
             environment = previous
         }
     }
 
-    // ---------- EXPRESSIONS (Lab 3 + Lab 4) ----------
-
     fun evaluate(expr: Expr): Any? = when (expr) {
-
         is Expr.Literal -> expr.value
         is Expr.Grouping -> evaluate(expr.expression)
 
@@ -54,8 +70,9 @@ class Evaluator {
             when (expr.operator.type) {
                 TokenType.MINUS -> {
                     if (right !is Number) runtimeError(expr.operator, "Operand must be a number.")
-                    -(right.toDouble())
+                    -right.toDouble()
                 }
+
                 TokenType.BANG -> !isTruthy(right)
                 else -> runtimeError(expr.operator, "Unknown unary operator.")
             }
@@ -64,40 +81,42 @@ class Evaluator {
         is Expr.Binary -> {
             val left = evaluate(expr.left)
             val right = evaluate(expr.right)
-            when (expr.operator.type) {
 
+            when (expr.operator.type) {
                 TokenType.PLUS -> {
                     when {
-                        left is Double && right is Double -> left + right
-                        left is Double && right is Int -> left + right.toDouble()
-                        left is Int && right is Double -> left.toDouble() + right
-                        left is Int && right is Int -> left + right
-                        left is String || right is String -> left.toString() + right.toString()
-                        else -> runtimeError(expr.operator, "Operands must be two numbers or two strings.")
+                        left is Number && right is Number ->
+                            left.toDouble() + right.toDouble()
+
+                        left is String || right is String ->
+                            left.toString() + right.toString()
+
+                        else ->
+                            runtimeError(expr.operator, "Operands must be two numbers or two strings.")
                     }
                 }
 
                 TokenType.MINUS -> numOp(expr.operator, left, right) { a, b -> a - b }
-                TokenType.STAR  -> numOp(expr.operator, left, right) { a, b -> a * b }
+                TokenType.STAR -> numOp(expr.operator, left, right) { a, b -> a * b }
                 TokenType.SLASH -> {
-                    if (right == 0.0) runtimeError(expr.operator, "Division by zero.")
+                    if (right is Number && right.toDouble() == 0.0) {
+                        runtimeError(expr.operator, "Division by zero.")
+                    }
                     numOp(expr.operator, left, right) { a, b -> a / b }
                 }
 
                 TokenType.GREATER -> numBool(expr.operator, left, right) { a, b -> a > b }
-                TokenType.LESS    -> numBool(expr.operator, left, right) { a, b -> a < b }
+                TokenType.LESS -> numBool(expr.operator, left, right) { a, b -> a < b }
                 TokenType.GREATER_EQUAL -> numBool(expr.operator, left, right) { a, b -> a >= b }
-                TokenType.LESS_EQUAL    -> numBool(expr.operator, left, right) { a, b -> a <= b }
+                TokenType.LESS_EQUAL -> numBool(expr.operator, left, right) { a, b -> a <= b }
 
                 TokenType.EQUAL_EQUAL -> isEqual(left, right)
-                TokenType.BANG_EQUAL  -> !isEqual(left, right)
+                TokenType.BANG_EQUAL -> !isEqual(left, right)
 
                 else -> runtimeError(expr.operator, "Unknown binary operator.")
             }
         }
     }
-
-    // ---------- helpers (same as you had) ----------
 
     private fun isTruthy(v: Any?): Boolean {
         if (v == null) return false

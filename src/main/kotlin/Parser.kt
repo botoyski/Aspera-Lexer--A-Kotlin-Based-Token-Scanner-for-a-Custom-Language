@@ -1,79 +1,115 @@
-// Parser.kt – parses to a list of Stmt (Lab 4 style)
-
 class Parser(private val tokens: List<Token>) {
 
     private var current = 0
     private var panicMode = false
 
-    // Entry point: parse a whole program (list of statements)
-    fun parse(): List<Stmt> {
-        val statements = mutableListOf<Stmt>()
+    // Top-level: parse entire source into a Program with a chain of statements
+    fun parse(): Stmt.Program {
+        var first: Stmt? = null
+        var last: Stmt? = null
+
         while (!isAtEnd()) {
-            statements += declaration()
+            val stmt = declarationForChain()
+            if (first == null) {
+                first = stmt
+                last = stmt
+            } else if (last != null) {
+                last = attachNext(last, stmt)
+            }
         }
-        return statements
+        return Stmt.Program(first)
     }
 
-    // declaration → "var" varDecl | statement
-    private fun declaration(): Stmt {
+    // Build a single statement at top level
+    private fun declarationForChain(): Stmt {
         return try {
-            if (tatagos(TokenType.VAR)) varDeclaration() else statement()
+            if (tatagos(TokenType.VAR)) varDeclaration(null) else statement(null)
         } catch (e: RuntimeException) {
             error(peek(), e.message ?: "Parse error")
-            Stmt.Expression(Expr.Literal(null))
+            Stmt.Expression(Expr.Literal(null), null)
         }
     }
 
-    // varDecl → IDENTIFIER ( "=" expression )? ";"
-    private fun varDeclaration(): Stmt {
+    // Attach 'next' pointer and return the updated tail (the node we just updated)
+    private fun attachNext(prev: Stmt, next: Stmt): Stmt {
+        return when (prev) {
+            is Stmt.Expression -> prev.copy(next = next)
+            is Stmt.Print -> prev.copy(next = next)
+            is Stmt.Var -> prev.copy(next = next)
+            is Stmt.Block -> prev.copy(next = next)
+            is Stmt.Program -> prev
+        }
+    }
+
+    // -------------- statements --------------
+
+    // varDecl → "var" IDENTIFIER ( "=" expression )? ";"
+    private fun varDeclaration(next: Stmt?): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expect variable name.")
         var initializer: Expr? = null
         if (tatagos(TokenType.EQUAL)) {
             initializer = expression()
         }
         consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
-        return Stmt.Var(name, initializer)
+        return Stmt.Var(name, initializer, next)
     }
 
-    // statement → printStmt | block | exprStmt
-    private fun statement(): Stmt {
+    // statement → print | block | exprStmt
+    private fun statement(next: Stmt?): Stmt {
         return when {
-            tatagos(TokenType.PRINT) -> printStatement()
-            tatagos(TokenType.LEFT_BRACE) -> Stmt.Block(block())
-            else -> expressionStatement()
+            tatagos(TokenType.PRINT) -> printStatement(next)
+            tatagos(TokenType.LEFT_BRACE) -> blockStatement(next)
+            else -> expressionStatement(next)
         }
     }
 
     // printStmt → "print" expression ";"
-    private fun printStatement(): Stmt {
+    private fun printStatement(next: Stmt?): Stmt {
         val expr = expression()
         consume(TokenType.SEMICOLON, "Expect ';' after value.")
-        return Stmt.Print(expr)
+        return Stmt.Print(expr, next)
     }
 
-    // block → "{" declaration* "}"
-    private fun block(): List<Stmt> {
-        val statements = mutableListOf<Stmt>()
+    // block → "{" (declaration)* "}"
+    private fun blockStatement(next: Stmt?): Stmt {
+        var first: Stmt? = null
+        var last: Stmt? = null
+
         while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
-            statements += declaration()
+            val stmt = declarationForChainInBlock()
+            if (first == null) {
+                first = stmt
+                last = stmt
+            } else if (last != null) {
+                last = attachNext(last, stmt)
+            }
         }
+
         consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
-        return statements
+        val innerProgram = Stmt.Program(first)
+        return Stmt.Block(innerProgram, next)
     }
 
-    // exprStmt → expression ";"
-    private fun expressionStatement(): Stmt {
+    // Version used inside blocks so we stop correctly at '}' or EOF
+    private fun declarationForChainInBlock(): Stmt {
+        return try {
+            if (tatagos(TokenType.VAR)) varDeclaration(null) else statement(null)
+        } catch (e: RuntimeException) {
+            error(peek(), e.message ?: "Parse error")
+            Stmt.Expression(Expr.Literal(null), null)
+        }
+    }
+
+    private fun expressionStatement(next: Stmt?): Stmt {
         val expr = expression()
         consume(TokenType.SEMICOLON, "Expect ';' after expression.")
-        return Stmt.Expression(expr)
+        return Stmt.Expression(expr, next)
     }
 
-    // ---------------- EXPRESSIONS ----------------
+    // -------------- expressions --------------
 
-    // expression → assignment
     private fun expression(): Expr = assignment()
 
-    // assignment → IDENTIFIER "=" assignment | equality
     private fun assignment(): Expr {
         var expr = equality()
 
@@ -91,7 +127,6 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
-    // equality → comparison ( ( "!=" | "==" ) comparison )*
     private fun equality(): Expr {
         var expr = comparison()
         while (tatagos(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)) {
@@ -102,7 +137,6 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
-    // comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
     private fun comparison(): Expr {
         var expr = term()
         while (tatagos(
@@ -116,7 +150,6 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
-    // term → factor ( ( "-" | "+" ) factor )*
     private fun term(): Expr {
         var expr = factor()
         while (tatagos(TokenType.MINUS, TokenType.PLUS)) {
@@ -127,7 +160,6 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
-    // factor → unary ( ( "/" | "*" ) unary )*
     private fun factor(): Expr {
         var expr = unary()
         while (tatagos(TokenType.SLASH, TokenType.STAR)) {
@@ -138,7 +170,6 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
-    // unary → ( "!" | "-" ) unary | primary
     private fun unary(): Expr {
         if (tatagos(TokenType.BANG, TokenType.MINUS)) {
             val op = previous()
@@ -148,7 +179,6 @@ class Parser(private val tokens: List<Token>) {
         return primary()
     }
 
-    // primary → NUMBER | STRING | "true" | "false" | "nil" | IDENTIFIER | "(" expression ")"
     private fun primary(): Expr {
         if (tatagos(TokenType.NUMBER)) {
             val num = previous().value as Double
@@ -176,7 +206,7 @@ class Parser(private val tokens: List<Token>) {
         return Expr.Literal(null)
     }
 
-    // --------------- helpers ----------------
+    // -------------- helpers --------------
 
     private fun tatagos(vararg types: TokenType): Boolean {
         for (t in types) {
@@ -210,7 +240,6 @@ class Parser(private val tokens: List<Token>) {
     private fun error(token: Token, message: String) {
         if (panicMode) return
         panicMode = true
-        // for lab: no printing, just sync
         synchronize()
     }
 

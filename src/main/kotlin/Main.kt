@@ -28,8 +28,8 @@ fun repl() {
             val scanner = Scanner(input)
             val tokens = scanner.scanTokens()
             val parser = Parser(tokens)
-            val statements = parser.parse()
-            evaluator.execute(statements)
+            val program = parser.parse()
+            evaluator.execute(program)
         } catch (e: Exception) {
             println("[ERROR] ${e.message}")
         }
@@ -37,10 +37,15 @@ fun repl() {
 }
 
 fun run(source: String) {
+    println("DEBUG: running file...")   // optional, you can remove later
+
     val scanner = Scanner(source)
     val tokens = scanner.scanTokens()
+
     val parser = Parser(tokens)
-    val statements = parser.parse()
+    val program = parser.parse()        // Stmt.Program
+
     val evaluator = Evaluator()
-    evaluator.execute(statements)
+    evaluator.execute(program)
 }
+
