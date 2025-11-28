@@ -18,9 +18,9 @@ class AstStringer {
         when (v) {
             null -> "nil"
             is String -> "\"$v\""
-            is Double -> if (v == Math.floor(v)) "${v.toInt()}.0" else v.toString()
-            is Float -> if (v == Math.floor(v.toDouble())) "${v.toInt()}.0" else v.toString()
+            is Number -> v.toString()
             is Boolean -> v.toString()
             else -> v.toString()
         }
+
 }
