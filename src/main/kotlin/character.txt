@@ -1,0 +1,9 @@
+Character:
+Race: Elf
+Class: Ranger
+Background: Outcast
+Attributes: STR=15, DEX=18, INT=12, WIS=10, CHA=8, END=14
+Skills: Tracking, Archery, Stealth
+Equipment: Weapon=Bow Armor=Leather Accessory=Amulet
+Alignment: Chaotic Good
+Magic Affinity: Nature

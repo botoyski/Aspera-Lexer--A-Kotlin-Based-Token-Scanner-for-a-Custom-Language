@@ -1,7 +1,17 @@
 sealed interface Stmt {
-    data class Program(val first: Stmt?) : Stmt
-    data class Expression(val expr: Expr, val next: Stmt?) : Stmt
-    data class Print(val expr: Expr, val next: Stmt?) : Stmt
-    data class Var(val name: Token, val initializer: Expr?, val next: Stmt?) : Stmt
-    data class Block(val body: Program, val next: Stmt?) : Stmt
+    data class Program(val character: Character) : Stmt
+
+    data class Character(
+        val race: String,
+        val clazz: String?,
+        val background: String?,
+        val attributes: Map<String, Int>,
+        val skills: List<String>,
+        val weapon: String,
+        val armor: String,
+        val accessory: String,
+        val alignment: String,
+        val magicAffinity: String
+    ) : Stmt
 }
+

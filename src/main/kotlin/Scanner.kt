@@ -1,5 +1,4 @@
 class Scanner(private val source: String) {
-
     private val tokens = mutableListOf<Token>()
     private var start = 0
     private var current = 0
@@ -7,7 +6,9 @@ class Scanner(private val source: String) {
 
     fun scanTokens(): List<Token> {
         while (!isAtEnd()) {
+            skipWhitespace()
             start = current
+            if (isAtEnd()) break
             scanToken()
         }
         tokens.add(Token(TokenType.EOF, "", null, line))
@@ -16,49 +17,30 @@ class Scanner(private val source: String) {
 
     private fun isAtEnd(): Boolean = current >= source.length
 
+    private fun skipWhitespace() {
+        while (!isAtEnd()) {
+            val c = peek()
+            when (c) {
+                ' ', '\t', '\r' -> advance()
+                '\n' -> {
+                    line++
+                    advance()
+                }
+                else -> return
+            }
+        }
+    }
+
     private fun scanToken() {
         val c = advance()
         when (c) {
-            '(' -> addToken(TokenType.LEFT_PAREN)
-            ')' -> addToken(TokenType.RIGHT_PAREN)
-            '{' -> addToken(TokenType.LEFT_BRACE)
-            '}' -> addToken(TokenType.RIGHT_BRACE)
             ',' -> addToken(TokenType.COMMA)
-            '.' -> addToken(TokenType.DOT)
-            '-' -> addToken(TokenType.MINUS)
-            '+' -> addToken(TokenType.PLUS)
-            ';' -> addToken(TokenType.SEMICOLON)
-            '*' -> addToken(TokenType.STAR)
-
-            '!' -> addToken(if (match('=')) TokenType.BANG_EQUAL else TokenType.BANG)
-            '=' -> addToken(if (match('=')) TokenType.EQUAL_EQUAL else TokenType.EQUAL)
-            '<' -> addToken(if (match('=')) TokenType.LESS_EQUAL else TokenType.LESS)
-            '>' -> addToken(if (match('=')) TokenType.GREATER_EQUAL else TokenType.GREATER)
-
-            '/' -> {
-                if (match('/')) {
-                    // comment until end of line
-                    while (peek() != '\n' && !isAtEnd()) advance()
-                } else {
-                    addToken(TokenType.SLASH)
-                }
-            }
-
-            ' ', '\r', '\t' -> {
-                // ignore whitespace
-            }
-
-            '\n' -> line++
-
-            '"' -> string()
-
+            '=' -> addToken(TokenType.EQUAL)
             else -> {
-                when {
-                    c.isDigit() -> number()
-                    c.isLetter() || c == '_' -> identifier()
-                    else -> {
-                        // unknown character; for lab we can ignore or log
-                    }
+                if (c.isDigit()) {
+                    number()
+                } else {
+                    word()
                 }
             }
         }
@@ -69,71 +51,107 @@ class Scanner(private val source: String) {
         return source[current - 1]
     }
 
+    private fun peek(): Char =
+        if (isAtEnd()) '\u0000' else source[current]
+
     private fun addToken(type: TokenType, literal: Any? = null) {
         val text = source.substring(start, current)
         tokens.add(Token(type, text, literal, line))
     }
 
-    private fun match(expected: Char): Boolean {
-        if (isAtEnd()) return false
-        if (source[current] != expected) return false
-        current++
-        return true
+    private fun number() {
+        while (!isAtEnd() && peek().isDigit()) advance()
+        val text = source.substring(start, current)
+        val value = text.toInt()
+        tokens.add(Token(TokenType.NUMBER, text, value, line))
     }
 
-    private fun peek(): Char =
-        if (isAtEnd()) '\u0000' else source[current]
-
-    private fun peekNext(): Char =
-        if (current + 1 >= source.length) '\u0000' else source[current + 1]
-
-    private fun string() {
-        while (peek() != '"' && !isAtEnd()) {
-            if (peek() == '\n') line++
+    private fun word() {
+        // read a word (up to whitespace, comma, or '=')
+        while (!isAtEnd() && !peek().isWhitespace() && peek() != ',' && peek() != '=') {
             advance()
         }
+        val raw = source.substring(start, current)
+        val text = raw.trim()
 
-        if (isAtEnd()) {
-            // unterminated string; for lab you could throw an error
+        // Special case: if this word is "Alignment:", next non-empty sequence on this line
+        // should be the full alignment string (can contain a space).
+        if (text == "Alignment:") {
+            tokens.add(Token(TokenType.ALIGNMENT_KW, text, null, line))
+            skipSpacesSameLine()
+            val alignStart = current
+            while (!isAtEnd() && peek() != '\n' && peek() != '\r') {
+                advance()
+            }
+            val alignText = source.substring(alignStart, current).trim()
+            if (alignText.isNotEmpty()) {
+                tokens.add(Token(TokenType.ALIGNMENT_TYPE, alignText, null, line))
+            }
             return
         }
 
-        // closing "
-        advance()
+        val type = when (text) {
+            "Character:" -> TokenType.CHARACTER_KW
+            "Race:" -> TokenType.RACE_KW
+            "Class:" -> TokenType.CLASS_KW
+            "Background:" -> TokenType.BACKGROUND_KW
+            "Attributes:" -> TokenType.ATTRIBUTES_KW
+            "Skills:" -> TokenType.SKILLS_KW
+            "Equipment:" -> TokenType.EQUIPMENT_KW
+            "Magic" -> null
+            "Affinity:" -> TokenType.MAGIC_AFFINITY_KW
 
-        val value = source.substring(start + 1, current - 1)
-        addToken(TokenType.STRING, value)
-    }
+            "STR" -> TokenType.STR_KW
+            "DEX" -> TokenType.DEX_KW
+            "INT" -> TokenType.INT_KW
+            "WIS" -> TokenType.WIS_KW
+            "CHA" -> TokenType.CHA_KW
+            "END" -> TokenType.END_KW
 
-    private fun number() {
-        while (peek().isDigit()) advance()
+            "Weapon" -> TokenType.WEAPON_LABEL
+            "Armor" -> TokenType.ARMOR_LABEL
+            "Accessory" -> TokenType.ACCESSORY_LABEL
 
-        if (peek() == '.' && peekNext().isDigit()) {
-            advance() // consume "."
-            while (peek().isDigit()) advance()
+            "Orc", "Human", "Elf", "Fairy", "Spirit", "Demihuman", "Angel", "Demon", "Dwarf" ->
+                TokenType.RACE_TYPE
+
+            "Warrior", "Knight", "Mage", "Thief", "Ranger", "Paladin", "Barbarian",
+            "Monk", "Druid", "Sorcerer", "Warlock" ->
+                TokenType.CLASS_TYPE
+
+            "Noble", "Commoner", "Outcast", "Mercenary",
+            "Acolyte", "Hermit", "Scholar", "Hunter", "Nomad" ->
+                TokenType.BACKGROUND_TYPE
+
+            "Tracking", "Alchemy", "Blacksmithing", "Stealth", "Healing",
+            "TwoHanded", "Archery", "ElementalMagic", "Cooking" ->
+                TokenType.SKILL
+
+            "Sword", "Axe", "Dagger", "Bow", "Spear", "Staff" ->
+                TokenType.WEAPON_VALUE
+
+            "Leather", "Plate", "Robe", "Chainmail" ->
+                TokenType.ARMOR_VALUE
+
+            "Ring", "Amulet", "Charm", "Rune" ->
+                TokenType.ACCESSORY_VALUE
+
+            "Fire", "Water", "Earth", "Air", "Light", "Dark",
+            "Nature", "Arcane", "None" ->
+                TokenType.MAGIC_TYPE
+
+            else -> null
         }
 
-        val text = source.substring(start, current)
-        val value = text.toDouble()
-        addToken(TokenType.NUMBER, value)
+        if (type != null) {
+            tokens.add(Token(type, text, null, line))
+        }
     }
 
-    private fun identifier() {
-        while (peek().isLetterOrDigit() || peek() == '_') advance()
-
-        val text = source.substring(start, current)
-        val type = keywords[text] ?: TokenType.IDENTIFIER
-        addToken(type)
+    private fun skipSpacesSameLine() {
+        while (!isAtEnd() && (peek() == ' ' || peek() == '\t')) {
+            advance()
+        }
     }
 
-    companion object {
-        private val keywords = mapOf(
-            "var" to TokenType.VAR,
-            "print" to TokenType.PRINT,
-            "true" to TokenType.TRUE,
-            "false" to TokenType.FALSE,
-            "nil" to TokenType.NIL
-            // add more keywords if your language has them
-        )
-    }
 }

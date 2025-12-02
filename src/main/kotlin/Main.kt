@@ -4,47 +4,30 @@ fun main(args: Array<String>) {
         run(source)
         return
     }
-    repl()
-}
 
-fun repl() {
-    println("Welcome sahhh, ito ang coding language para sa mga real ones")
-    println("Ilagay ang input mo sa ibaba G! (type 'exit' or 'tara' to bounce)")
-    println()
-
-    val evaluator = Evaluator()
-
+    println("Enter a character description, end with an empty line:")
+    val builder = StringBuilder()
     while (true) {
-        print("> ")
-        val input = readlnOrNull() ?: break
-        if (input.isBlank()) continue
-
-        if (input.lowercase() in listOf("exit", "quit", "tara", "bounce")) {
-            println("Tara na, tapos na tayo")
-            break
-        }
-
-        try {
-            val scanner = Scanner(input)
-            val tokens = scanner.scanTokens()
-            val parser = Parser(tokens)
-            val program = parser.parse()
-            evaluator.execute(program)
-        } catch (e: Exception) {
-            println("[ERROR] ${e.message}")
-        }
+        val line = readLine() ?: break
+        if (line.isBlank()) break
+        builder.appendLine(line)
     }
+
+    run(builder.toString())
 }
 
 fun run(source: String) {
-    println("DEBUG: running file...")   // optional, you can remove later
-
+    println("DEBUG: running file...")
     val scanner = Scanner(source)
     val tokens = scanner.scanTokens()
 
-    val parser = Parser(tokens)
-    val program = parser.parse()        // Stmt.Program
+    // DEBUG: print tokens
+    for (t in tokens) {
+        println("${t.line}: ${t.type} '${t.text}'")
+    }
 
+    val parser = Parser(tokens)
+    val program = parser.parse()
     val evaluator = Evaluator()
     evaluator.execute(program)
 }

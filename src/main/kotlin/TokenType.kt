@@ -1,26 +1,46 @@
 enum class TokenType {
-    //single character tokens
-    LEFT_PAREN, RIGHT_PAREN,
-    LEFT_BRACE, RIGHT_BRACE,
-    COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
+    // punctuation
+    COMMA,
+    EQUAL,
 
-    //one or two character tokens
-    BANG, BANG_EQUAL,
-    EQUAL, EQUAL_EQUAL,
-    GREATER, GREATER_EQUAL,
-    LESS, LESS_EQUAL,
+    // literals
+    NUMBER,
 
-    //literals
-    IDENTIFIER, STRING, NUMBER,
+    // section headers
+    CHARACTER_KW,       // "Character:"
+    RACE_KW,            // "Race:"
+    CLASS_KW,           // "Class:"
+    BACKGROUND_KW,      // "Background:"
+    ATTRIBUTES_KW,      // "Attributes:"
+    SKILLS_KW,          // "Skills:"
+    EQUIPMENT_KW,       // "Equipment:"
+    ALIGNMENT_KW,       // "Alignment:"
+    MAGIC_AFFINITY_KW,  // "Magic Affinity:"
 
-    //keywords
-    VAR, IF, VAL , ELSE, TRUE, FALSE, NIL, FOR, WHILE, PRINT, RETURN, THEN, END,
+    // attribute keywords
+    STR_KW,
+    DEX_KW,
+    INT_KW,
+    WIS_KW,
+    CHA_KW,
+    END_KW,
 
-    // added to existing TokenType enum
-    SCROLL, SEALSCROLL, RUNE_KW, INCANTATION, INVOKE, WHISPER, CONJURE, RELEASE, OMEN,
-    SIGIL, ENDSIGIL, WITH, REQUIRES, ENACTS, WHILE_KW, PERSISTS, ENDQUEST,
-    AND, OR, NAME, ELEMENT,
+    // equipment labels
+    WEAPON_LABEL,
+    ARMOR_LABEL,
+    ACCESSORY_LABEL,
 
+    // categories for values
+    RACE_TYPE,
+    CLASS_TYPE,
+    BACKGROUND_TYPE,
+    SKILL,
+    WEAPON_VALUE,
+    ARMOR_VALUE,
+    ACCESSORY_VALUE,
+    ALIGNMENT_TYPE,
+    MAGIC_TYPE,
 
     EOF
+
 }
