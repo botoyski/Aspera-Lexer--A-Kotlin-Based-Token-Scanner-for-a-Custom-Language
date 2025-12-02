@@ -1,5 +1,5 @@
 sealed interface Stmt {
-    data class Program(val character: Character) : Stmt
+    data class Program(val characters: List<Character>) : Stmt
 
     data class Character(
         val race: String,

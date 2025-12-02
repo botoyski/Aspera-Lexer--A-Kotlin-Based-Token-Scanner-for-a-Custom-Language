@@ -1,0 +1,19 @@
+Character:
+Race: Elf
+Class: Ranger
+Background: Outcast
+Attributes: STR=15, DEX=18, INT=12, WIS=10, CHA=8, END=14
+Skills: Tracking, Archery, Stealth
+Equipment: Weapon=Bow Armor=Leather Accessory=Amulet
+Alignment: Chaotic Good
+Magic Affinity: Nature
+
+Character:
+Race: Human
+Class: Sorcerer
+Background: Acolyte
+Attributes: STR=8, DEX=14, INT=18, WIS=12, CHA=10, END=30
+Skills: Alchemy, ElementalMagic, Cooking
+Equipment: Weapon=Staff Armor=Robe Accessory=Rune
+Alignment: Neutral Good
+Magic Affinity: Fire

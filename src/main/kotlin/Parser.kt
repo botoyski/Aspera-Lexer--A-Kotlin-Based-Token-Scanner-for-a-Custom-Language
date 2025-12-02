@@ -2,8 +2,11 @@ class Parser(private val tokens: List<Token>) {
     private var current = 0
 
     fun parse(): Stmt.Program {
-        val character = parseCharacter()
-        return Stmt.Program(character)
+        val characters = mutableListOf<Stmt.Character>()
+        while (!isAtEnd()) {
+            characters += parseCharacter()
+        }
+        return Stmt.Program(characters)
     }
 
     private fun parseCharacter(): Stmt.Character {
