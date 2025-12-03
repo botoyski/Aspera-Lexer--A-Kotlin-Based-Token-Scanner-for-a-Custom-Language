@@ -1,4 +1,5 @@
 class Parser(private val tokens: List<Token>) {
+
     private var current = 0
 
     fun parse(): Stmt.Program {
@@ -11,11 +12,10 @@ class Parser(private val tokens: List<Token>) {
 
     private fun parseCharacter(): Stmt.Character {
         consume(TokenType.CHARACTER_KW, "Expect 'Character:' at start.")
-
         val race = parseRace()
         val clazz = parseOptionalClass()
         val background = parseOptionalBackground()
-        val attributes = parseAttributes()
+        val attributes = parseAttributes(clazz)
         val skills = parseSkills()
         val (weapon, armor, accessory) = parseEquipment()
         val alignment = parseAlignment()
@@ -57,16 +57,15 @@ class Parser(private val tokens: List<Token>) {
         return null
     }
 
-    private fun parseAttributes(): Map<String, Int> {
+    // ===== fully random, class‑biased attributes =====
+    private fun parseAttributes(clazz: String?): Map<String, Int> {
+        // Require "Attributes:" in the script
         consume(TokenType.ATTRIBUTES_KW, "Expect 'Attributes:'.")
-        val result = mutableMapOf<String, Int>()
-        parseAttribute(result)
-        while (match(TokenType.COMMA)) {
-            parseAttribute(result)
-        }
-        return result
+        // Ignore any STR=..., DEX=... etc. and just randomize with class bias
+        return randomAttributes(clazz)
     }
 
+    // Unused now, but kept in case you later want manual attributes again
     private fun parseAttribute(map: MutableMap<String, Int>) {
         val attrToken = when {
             match(TokenType.STR_KW) -> previous()
@@ -77,6 +76,7 @@ class Parser(private val tokens: List<Token>) {
             match(TokenType.END_KW) -> previous()
             else -> error(peek(), "Expect attribute name like STR, DEX, etc.")
         }
+
         consume(TokenType.EQUAL, "Expect '=' after attribute name.")
         val valueToken = consume(TokenType.NUMBER, "Expect number for attribute value.")
         val key = attrToken.text
@@ -125,7 +125,7 @@ class Parser(private val tokens: List<Token>) {
         return magic.text
     }
 
-// helpers
+    // ===== helpers =====
 
     private fun match(type: TokenType): Boolean {
         if (check(type)) {
@@ -158,5 +158,86 @@ class Parser(private val tokens: List<Token>) {
         throw RuntimeException("[line ${token.line}] Error at '${token.text}': $message")
     }
 
+    // ===== class‑biased random attribute generator =====
 
+    private fun randomAttributes(clazz: String?): Map<String, Int> {
+        val keys = listOf("STR", "DEX", "INT", "WIS", "CHA", "END")
+        val min = 1
+        val max = 20
+        val total = 80
+
+        // weights per attribute depending on class
+        val weights: Map<String, Int> = when (clazz?.lowercase()) {
+            "ranger" -> mapOf(
+                "STR" to 8,
+                "DEX" to 20,
+                "INT" to 8,
+                "WIS" to 16,
+                "CHA" to 8,
+                "END" to 12
+            )
+            "sorcerer", "mage" -> mapOf(
+                "STR" to 6,
+                "DEX" to 8,
+                "INT" to 20,
+                "WIS" to 12,
+                "CHA" to 16,
+                "END" to 8
+            )
+            "warrior", "knight", "barbarian", "paladin" -> mapOf(
+                "STR" to 20,
+                "DEX" to 12,
+                "INT" to 6,
+                "WIS" to 8,
+                "CHA" to 8,
+                "END" to 16
+            )
+            else -> mapOf( // default: roughly even
+                "STR" to 10,
+                "DEX" to 10,
+                "INT" to 10,
+                "WIS" to 10,
+                "CHA" to 10,
+                "END" to 10
+            )
+        }
+
+        while (true) {
+            // start with all at min
+            val values = IntArray(keys.size) { min }
+            var remaining = total - keys.size * min
+
+            // distribute remaining points randomly, using weights
+            while (remaining > 0) {
+                val idx = pickWeightedIndex(keys, weights, values, max)
+                if (idx == -1) break
+                values[idx]++
+                remaining--
+            }
+
+            // safety check
+            if (values.all { it in min..max } && values.sum() == total) {
+                return keys.zip(values.asIterable()).toMap()
+            }
+        }
+    }
+
+    private fun pickWeightedIndex(
+        keys: List<String>,
+        weights: Map<String, Int>,
+        values: IntArray,
+        max: Int
+    ): Int {
+        // only attributes below max are candidates
+        val candidates = keys.indices.filter { values[it] < max }
+        if (candidates.isEmpty()) return -1
+
+        val weightedList = mutableListOf<Int>()
+        for (i in candidates) {
+            val key = keys[i]
+            val w = weights[key] ?: 1
+            repeat(w) { weightedList.add(i) }
+        }
+        return weightedList.random()
+    }
 }

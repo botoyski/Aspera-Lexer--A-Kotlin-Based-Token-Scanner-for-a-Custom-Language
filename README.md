@@ -1,4 +1,4 @@
-# YoungStunna Character & Battle DSL
+# MythWeaver Character & Battle DSL
 
 ## Creator
 Eryl Joseph Aspera, Antonio Gabriel Salmon
@@ -7,7 +7,7 @@ Eryl Joseph Aspera, Antonio Gabriel Salmon
 
 ## Language Overview
 
-YoungStunna is a small, interpreter-based language project extended with a domain-specific layer for creating fantasy RPG-style characters and simulating battles between them. It combines:
+MythWeaver is a small, interpreter-based language project extended with a domain-specific layer for creating fantasy RPG-style characters and simulating battles between them. It combines:
 
 - A core expression/statement language (variables, control flow, functions) used in course labs.
 - A mini DSL for describing characters (race, class, attributes, skills, equipment, alignment, magic affinity).
