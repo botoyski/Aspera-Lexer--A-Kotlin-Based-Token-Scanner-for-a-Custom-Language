@@ -1,46 +1,29 @@
 enum class TokenType {
     // punctuation
-    COMMA,
-    EQUAL,
+    COMMA, EQUAL, LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE, SEMICOLON,
+
+    // operators
+    EQUAL_EQUAL, BANG_EQUAL, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL,
 
     // literals
     NUMBER,
 
     // section headers
-    CHARACTER_KW,       // "Character:"
-    RACE_KW,            // "Race:"
-    CLASS_KW,           // "Class:"
-    BACKGROUND_KW,      // "Background:"
-    ATTRIBUTES_KW,      // "Attributes:"
-    SKILLS_KW,          // "Skills:"
-    EQUIPMENT_KW,       // "Equipment:"
-    ALIGNMENT_KW,       // "Alignment:"
-    MAGIC_AFFINITY_KW,  // "Magic Affinity:"
+    CHARACTER_KW, RACE_KW, CLASS_KW, BACKGROUND_KW, ATTRIBUTES_KW, SKILLS_KW,
+    EQUIPMENT_KW, ALIGNMENT_KW, MAGIC_AFFINITY_KW,
 
     // attribute keywords
-    STR_KW,
-    DEX_KW,
-    INT_KW,
-    WIS_KW,
-    CHA_KW,
-    END_KW,
+    STR_KW, DEX_KW, INT_KW, WIS_KW, CHA_KW, END_KW,
 
     // equipment labels
-    WEAPON_LABEL,
-    ARMOR_LABEL,
-    ACCESSORY_LABEL,
+    WEAPON_LABEL, ARMOR_LABEL, ACCESSORY_LABEL,
 
     // categories for values
-    RACE_TYPE,
-    CLASS_TYPE,
-    BACKGROUND_TYPE,
-    SKILL,
-    WEAPON_VALUE,
-    ARMOR_VALUE,
-    ACCESSORY_VALUE,
-    ALIGNMENT_TYPE,
-    MAGIC_TYPE,
+    RACE_TYPE, CLASS_TYPE, BACKGROUND_TYPE, SKILL,
+    WEAPON_VALUE, ARMOR_VALUE, ACCESSORY_VALUE, ALIGNMENT_TYPE, MAGIC_TYPE,
+
+    // control keywords
+    IF_KW, ELSE_KW, WHILE_KW, FOR_KW,
 
     EOF
-
 }

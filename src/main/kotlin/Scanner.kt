@@ -36,6 +36,13 @@ class Scanner(private val source: String) {
         when (c) {
             ',' -> addToken(TokenType.COMMA)
             '=' -> addToken(TokenType.EQUAL)
+
+            '(' -> addToken(TokenType.LEFT_PAREN)
+            ')' -> addToken(TokenType.RIGHT_PAREN)
+            '{' -> addToken(TokenType.LEFT_BRACE)
+            '}' -> addToken(TokenType.RIGHT_BRACE)
+            ';' -> addToken(TokenType.SEMICOLON)
+
             else -> {
                 if (c.isDigit()) {
                     number()
@@ -45,6 +52,7 @@ class Scanner(private val source: String) {
             }
         }
     }
+
 
     private fun advance(): Char {
         current++
@@ -91,6 +99,13 @@ class Scanner(private val source: String) {
         }
 
         val type = when (text) {
+            // control keywords
+            "if" -> TokenType.IF_KW
+            "else" -> TokenType.ELSE_KW
+            "while" -> TokenType.WHILE_KW
+            "for" -> TokenType.FOR_KW
+
+            //section headers
             "Character:" -> TokenType.CHARACTER_KW
             "Race:" -> TokenType.RACE_KW
             "Class:" -> TokenType.CLASS_KW

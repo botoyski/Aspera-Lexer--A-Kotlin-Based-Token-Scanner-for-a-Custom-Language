@@ -1,34 +1,50 @@
-fun main(args: Array<String>) {
-    if (args.isNotEmpty()) {
-        val source = java.io.File(args[0]).readText()
-        run(source)
-        return
-    }
-
-    println("Enter a character description, end with an empty line:")
-    val builder = StringBuilder()
-    while (true) {
-        val line = readLine() ?: break
-        if (line.isBlank()) break
-        builder.appendLine(line)
-    }
-
-    run(builder.toString())
-}
-
-fun run(source: String) {
-    println("DEBUG: running file...")
-    val scanner = Scanner(source)
-    val tokens = scanner.scanTokens()
-
-    // DEBUG: print tokens
-    for (t in tokens) {
-        println("${t.line}: ${t.type} '${t.text}'")
-    }
-
-    val parser = Parser(tokens)
-    val program = parser.parse()
+fun main() {
     val evaluator = Evaluator()
-    evaluator.execute(program)
-}
 
+    // === Test 1: if (10 > 5) print 1 else print 0 ===
+    run {
+        val condition = Expr.Binary(
+            Expr.Literal(10),
+            Token(TokenType.GREATER, ">", null, 1),
+            Expr.Literal(5)
+        )
+        val thenBranch = Stmt.Print(Expr.Literal(1))
+        val elseBranch = Stmt.Print(Expr.Literal(0))
+        val ifStmt = Stmt.If(condition, thenBranch, elseBranch)
+
+        println("If test (expect 1):")
+        evaluator.executeStmt(ifStmt)
+        println()
+    }
+
+    // === Test 2: while (flag < 1) { print(0); flag = 1; } ===
+    run {
+        evaluator.setVar("flag", 0)   // make sure this method exists in Evaluator
+
+        val flagToken = Token(TokenType.RACE_TYPE, "flag", null, 1)
+
+        val condition = Expr.Binary(
+            Expr.Variable(flagToken),
+            Token(TokenType.LESS, "<", null, 1),
+            Expr.Literal(1)
+        )
+
+        val printZero = Stmt.Print(Expr.Literal(0))
+
+        val setFlagOne = Stmt.Expression(
+            Expr.Assign(
+                flagToken,
+                Expr.Literal(1)
+            )
+        )
+
+        val body = Stmt.Block(listOf(printZero, setFlagOne))
+        val whileStmt = Stmt.While(condition, body)
+
+        println("While test (expect a single 0):")
+        evaluator.executeStmt(whileStmt)
+        println()
+    }
+
+    println("Done.")
+}

@@ -1,8 +1,17 @@
 class Evaluator {
+    // Environment so expressions can read attributes like STR, DEX, etc.
+    private val env = mutableMapOf<String, Any?>()
+
     fun execute(program: Stmt.Program) {
         if (program.characters.isEmpty()) {
             println("No characters defined.")
             return
+        }
+
+        // Load first character’s attributes into env so STR, DEX, ... are usable in expressions
+        val first = program.characters[0]
+        for ((k, v) in first.attributes) {
+            env[k] = v
         }
 
         // Print all character sheets
@@ -22,6 +31,72 @@ class Evaluator {
             println("Winner: ${nameOf(winner)}")
         }
     }
+
+    fun executeStmt(stmt: Stmt) {
+        when (stmt) {
+            is Stmt.Expression -> evaluate(stmt.expression)
+            is Stmt.Print -> println(evaluate(stmt.expression))
+            is Stmt.Block -> executeBlock(stmt.statements)
+            is Stmt.If -> {
+                if (isTruthy(evaluate(stmt.condition))) {
+                    executeStmt(stmt.thenBranch)
+                } else if (stmt.elseBranch != null) {
+                    executeStmt(stmt.elseBranch)
+                }
+            }
+            is Stmt.While -> {
+                while (isTruthy(evaluate(stmt.condition))) {
+                    executeStmt(stmt.body)
+                }
+            }
+            is Stmt.Character,
+            is Stmt.Program -> {
+                // handled by execute(program)
+            }
+        }
+    }
+
+    private fun executeBlock(statements: List<Stmt>) {
+        for (s in statements) executeStmt(s)
+    }
+
+    private fun evaluate(expr: Expr): Any? =
+        when (expr) {
+            is Expr.Literal -> expr.value
+            is Expr.Grouping -> evaluate(expr.expression)
+            is Expr.Binary -> {
+                val left = evaluate(expr.left) as Int
+                val right = evaluate(expr.right) as Int
+                when (expr.operator.type) {
+                    TokenType.GREATER -> left > right
+                    TokenType.GREATER_EQUAL -> left >= right
+                    TokenType.LESS -> left < right
+                    TokenType.LESS_EQUAL -> left <= right
+                    TokenType.EQUAL_EQUAL -> isEqual(left, right)
+                    TokenType.BANG_EQUAL -> !isEqual(left, right)
+                    else -> throw RuntimeException("Unsupported operator")
+                }
+            }
+            is Expr.Logical -> {
+                // only if you add AND/OR tokens; placeholder for now
+                throw RuntimeException("Logical operators not implemented")
+            }
+            is Expr.Variable -> env[expr.name.text]
+            is Expr.Assign -> {
+                val value = evaluate(expr.value)
+                env[expr.name.text] = value
+                value
+            }
+        }
+
+    private fun isTruthy(v: Any?): Boolean =
+        when (v) {
+            null -> false
+            is Boolean -> v
+            else -> true
+        }
+
+    private fun isEqual(a: Any?, b: Any?): Boolean = a == b
 
     private fun printCharacterSheet(c: Stmt.Character) {
         println("Race: ${c.race}")
@@ -137,6 +212,9 @@ class Evaluator {
 
         return oneHit + fireFlurryDamage(attacker, defender, hitsLeft - 1)
     }
+
+    fun setVar(name: String, value: Any?) { env[name] = value } // <- top level
+
 }
 
 // ===== helpers =====
@@ -195,4 +273,7 @@ fun storyHook(c: Stmt.Character): String {
     )
 
     return templates.random()
+
 }
+
+
