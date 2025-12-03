@@ -1,11 +1,4 @@
 enum class TokenType {
-    // punctuation
-    COMMA,
-    EQUAL,
-
-    // literals
-    NUMBER,
-
     // section headers
     CHARACTER_KW,       // "Character:"
     RACE_KW,            // "Race:"
@@ -41,6 +34,29 @@ enum class TokenType {
     ALIGNMENT_TYPE,
     MAGIC_TYPE,
 
-    EOF
+    // single-char tokens used by scripting
+    LEFT_PAREN, RIGHT_PAREN,
+    LEFT_BRACE, RIGHT_BRACE,
+    COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
 
+    // two-char operators
+    BANG, BANG_EQUAL,
+    EQUAL, EQUAL_EQUAL,
+    GREATER, GREATER_EQUAL,
+    LESS, LESS_EQUAL,
+
+    // literals
+    IDENTIFIER, STRING, NUMBER,
+
+    // keywords
+    AND, OR,
+    IF, ELSE,
+    TRUE, FALSE, NIL,
+    VAR, VAL,
+    WHILE, FOR,
+    FUN,
+    RETURN,
+    PRINT,
+
+    EOF
 }

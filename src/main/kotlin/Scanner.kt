@@ -34,21 +34,79 @@ class Scanner(private val source: String) {
     private fun scanToken() {
         val c = advance()
         when (c) {
+            '(' -> addToken(TokenType.LEFT_PAREN)
+            ')' -> addToken(TokenType.RIGHT_PAREN)
+            '{' -> addToken(TokenType.LEFT_BRACE)
+            '}' -> addToken(TokenType.RIGHT_BRACE)
             ',' -> addToken(TokenType.COMMA)
-            '=' -> addToken(TokenType.EQUAL)
-            else -> {
-                if (c.isDigit()) {
-                    number()
+            '.' -> addToken(TokenType.DOT)
+            '-' -> addToken(TokenType.MINUS)
+            '+' -> addToken(TokenType.PLUS)
+            ';' -> addToken(TokenType.SEMICOLON)
+            '*' -> addToken(TokenType.STAR)
+
+            '!' -> addToken(if (match('=')) TokenType.BANG_EQUAL else TokenType.BANG)
+            '=' -> addToken(if (match('=')) TokenType.EQUAL_EQUAL else TokenType.EQUAL)
+            '<' -> addToken(if (match('=')) TokenType.LESS_EQUAL else TokenType.LESS)
+            '>' -> addToken(if (match('=')) TokenType.GREATER_EQUAL else TokenType.GREATER)
+
+            '/' -> {
+                if (match('/')) {
+                    while (!isAtEnd() && peek() != '\n') advance()
                 } else {
-                    word()
+                    addToken(TokenType.SLASH)
                 }
+            }
+
+            ' ', '\r', '\t' -> {}
+            '\n' -> { line++ }
+
+            '"' -> string()
+
+            else -> {
+                if (c.isDigit()) number()
+                else word()
             }
         }
     }
 
+
     private fun advance(): Char {
         current++
         return source[current - 1]
+    }
+
+    private fun match(expected: Char): Boolean {
+        if (isAtEnd()) return false
+        if (source[current] != expected) return false
+        current++
+        return true
+    }
+
+    private fun string() {
+        while (peek() != '"' && !isAtEnd()) {
+            if (peek() == '\n') line++
+            advance()
+        }
+
+        if (isAtEnd()) {
+            // unterminated string; for lab you could throw an error
+            return
+        }
+
+        // closing "
+        advance()
+
+        val value = source.substring(start + 1, current - 1)
+        addToken(TokenType.STRING, value)
+    }
+
+    private fun identifier() {
+        while (peek().isLetterOrDigit() || peek() == '_') advance()
+
+        val text = source.substring(start, current)
+        val type = keywords[text] ?: TokenType.IDENTIFIER
+        addToken(type)
     }
 
     private fun peek(): Char =
@@ -62,17 +120,47 @@ class Scanner(private val source: String) {
     private fun number() {
         while (!isAtEnd() && peek().isDigit()) advance()
         val text = source.substring(start, current)
-        val value = text.toInt()
+        val value = text.toDouble()
         tokens.add(Token(TokenType.NUMBER, text, value, line))
     }
 
     private fun word() {
         // read a word (up to whitespace, comma, or '=')
-        while (!isAtEnd() && !peek().isWhitespace() && peek() != ',' && peek() != '=') {
+        while (!isAtEnd()
+            && !peek().isWhitespace()
+            && peek() != ','
+            && peek() != '='
+            && peek() != ';'
+            && peek() != '('
+            && peek() != ')'
+            && peek() != '{'
+            && peek() != '}') {
             advance()
         }
         val raw = source.substring(start, current)
         val text = raw.trim()
+
+        // Special case: merge "Magic" + "Affinity:" into "Magic Affinity:"
+        if (text == "Magic") {
+            // look ahead on same line
+            skipSpacesSameLine()
+            val nextStart = current
+            while (!isAtEnd() && !peek().isWhitespace() && peek() != ',' && peek() != '=') {
+                advance()
+            }
+            val nextRaw = source.substring(nextStart, current)
+            val nextText = nextRaw.trim()
+            if (nextText == "Affinity:") {
+                val combined = "Magic Affinity:"
+                tokens.add(Token(TokenType.MAGIC_AFFINITY_KW, combined, null, line))
+                return
+            } else {
+                // just treat "Magic" as identifier and rewind to nextText start
+                current = nextStart
+                tokens.add(Token(TokenType.IDENTIFIER, text, null, line))
+                return
+            }
+        }
 
         // Special case: if this word is "Alignment:", next non-empty sequence on this line
         // should be the full alignment string (can contain a space).
@@ -99,7 +187,8 @@ class Scanner(private val source: String) {
             "Skills:" -> TokenType.SKILLS_KW
             "Equipment:" -> TokenType.EQUIPMENT_KW
             "Magic" -> null
-            "Affinity:" -> TokenType.MAGIC_AFFINITY_KW
+            "Affinity:" -> null  // do NOT emit a separate token
+            "Magic Affinity:" -> TokenType.MAGIC_AFFINITY_KW
 
             "STR" -> TokenType.STR_KW
             "DEX" -> TokenType.DEX_KW
@@ -140,11 +229,30 @@ class Scanner(private val source: String) {
             "Nature", "Arcane", "None" ->
                 TokenType.MAGIC_TYPE
 
+            // scripting keywords:
+            "var" -> TokenType.VAR
+            "val" -> TokenType.VAL
+            "if" -> TokenType.IF
+            "else" -> TokenType.ELSE
+            "while" -> TokenType.WHILE
+            "for" -> TokenType.FOR
+            "fun" -> TokenType.FUN
+            "return" -> TokenType.RETURN
+            "print" -> TokenType.PRINT
+            "true" -> TokenType.TRUE
+            "false" -> TokenType.FALSE
+            "nil" -> TokenType.NIL
+            "and" -> TokenType.AND
+            "or" -> TokenType.OR
+
             else -> null
         }
 
         if (type != null) {
             tokens.add(Token(type, text, null, line))
+        } else {
+            // variable and function names
+            addToken(TokenType.IDENTIFIER)
         }
     }
 
@@ -152,6 +260,17 @@ class Scanner(private val source: String) {
         while (!isAtEnd() && (peek() == ' ' || peek() == '\t')) {
             advance()
         }
+    }
+
+    companion object {
+        private val keywords = mapOf(
+            "var" to TokenType.VAR,
+            "print" to TokenType.PRINT,
+            "true" to TokenType.TRUE,
+            "false" to TokenType.FALSE,
+            "nil" to TokenType.NIL
+            // add more keywords if your language has them
+        )
     }
 
 }

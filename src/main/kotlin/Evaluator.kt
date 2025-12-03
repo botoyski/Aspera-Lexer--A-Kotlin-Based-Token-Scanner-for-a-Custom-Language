@@ -12,14 +12,33 @@ class Evaluator {
             println()
         }
 
-        // If at least two characters, make them fight
-        if (program.characters.size >= 2) {
-            println("=== Battle Demo ===")
-            val a = program.characters[0]
-            val b = program.characters[1]
-            val winner = battle(a, b)
-            println("=== Battle Over ===")
-            println("Winner: ${nameOf(winner)}")
+        val chars = program.characters
+
+        if (chars.size >= 2) {
+            if (chars.size == 2) {
+                // Keep the simple case
+                println("=== Battle Demo ===")
+                val a = chars[0]
+                val b = chars[1]
+                val winner = battle(a, b)
+                println("=== Battle Over ===")
+                println("Winner: ${nameOf(winner)}")
+            } else {
+                // Round-robin: each pair fights once
+                println("=== Round Robin Battles ===")
+                for (i in 0 until chars.size - 1) {
+                    for (j in i + 1 until chars.size) {
+                        val a = chars[i]
+                        val b = chars[j]
+                        println()
+                        println(">>> Match: ${nameOf(a)} vs ${nameOf(b)}")
+                        val winner = battle(a, b)
+                        println(">>> Winner: ${nameOf(winner)}")
+                    }
+                }
+                println()
+                println("=== Round Robin Complete ===")
+            }
         }
     }
 

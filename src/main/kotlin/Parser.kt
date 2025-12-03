@@ -240,4 +240,250 @@ class Parser(private val tokens: List<Token>) {
         }
         return weightedList.random()
     }
+
+    fun parseScriptProgram(): List<StmtLang> {
+        val statements = mutableListOf<StmtLang>()
+        while (!isAtEnd()) {
+            statements += declaration()
+        }
+        return statements
+    }
+
+    private fun declaration(): StmtLang {
+        return when {
+            match(TokenType.FUN) -> function()
+            match(TokenType.VAR) -> varDecl()
+            else -> statement()
+        }
+    }
+
+    // ===== statements =====
+
+    private fun statement(): StmtLang {
+        return when {
+            match(TokenType.PRINT) -> printStmt()
+            match(TokenType.IF) -> ifStmt()
+            match(TokenType.WHILE) -> whileStmt()
+            match(TokenType.LEFT_BRACE) -> StmtLang.Block(block())
+            match(TokenType.RETURN) -> returnStmt()
+            else -> exprStmt()
+        }
+    }
+
+    private fun printStmt(): StmtLang {
+        val value = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return StmtLang.Print(value)
+    }
+
+    private fun ifStmt(): StmtLang {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        val condition = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+        val thenBranch = statement()
+        val elseBranch = if (match(TokenType.ELSE)) statement() else null
+        return StmtLang.If(condition, thenBranch, elseBranch)
+    }
+
+    private fun whileStmt(): StmtLang {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
+        val condition = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+        val body = statement()
+        return StmtLang.While(condition, body)
+    }
+
+    private fun returnStmt(): StmtLang {
+        val keyword = previous()
+        var value: Expr? = null
+        if (!check(TokenType.SEMICOLON)) {
+            value = expression()
+        }
+        consume(TokenType.SEMICOLON, "Expect ';' after return value.")
+        return StmtLang.Return(keyword, value)
+    }
+
+    private fun block(): List<StmtLang> {
+        val statements = mutableListOf<StmtLang>()
+        while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+            statements += declaration()
+        }
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+        return statements
+    }
+
+    private fun exprStmt(): StmtLang {
+        val expr = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return StmtLang.Expression(expr)
+    }
+
+    private fun varDecl(): StmtLang {
+        val name = consume(TokenType.IDENTIFIER, "Expect variable name.")
+        var initializer: Expr? = null
+        if (match(TokenType.EQUAL)) {
+            initializer = expression()
+        }
+        consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+        return StmtLang.Var(name, initializer)
+    }
+
+    private fun function(): StmtLang.Function {
+        val name = consume(TokenType.IDENTIFIER, "Expect function name.")
+        consume(TokenType.LEFT_PAREN, "Expect '(' after function name.")
+        val parameters = mutableListOf<Token>()
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                parameters += consume(TokenType.IDENTIFIER, "Expect parameter name.")
+            } while (match(TokenType.COMMA))
+        }
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+        consume(TokenType.LEFT_BRACE, "Expect '{' before function body.")
+        val body = block()
+        return StmtLang.Function(name, parameters, body)
+    }
+
+    // ===== expressions =====
+
+    private fun expression(): Expr = assignment()
+
+    private fun assignment(): Expr {
+        val expr = or()
+        if (match(TokenType.EQUAL)) {
+            val equals = previous()
+            val value = assignment()
+            if (expr is Expr.Variable) {
+                return Expr.Assign(expr.name, value)
+            }
+            error(equals, "Invalid assignment target.")
+        }
+        return expr
+    }
+
+    private fun or(): Expr {
+        var expr = and()
+        while (match(TokenType.OR)) {
+            val op = previous()
+            val right = and()
+            expr = Expr.Logical(expr, op, right)
+        }
+        return expr
+    }
+
+    private fun and(): Expr {
+        var expr = equality()
+        while (match(TokenType.AND)) {
+            val op = previous()
+            val right = equality()
+            expr = Expr.Logical(expr, op, right)
+        }
+        return expr
+    }
+
+    private fun equality(): Expr {
+        var expr = comparison()
+        while (match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)) {
+            val op = previous()
+            val right = comparison()
+            expr = Expr.Binary(expr, op, right)
+        }
+        return expr
+    }
+
+    private fun comparison(): Expr {
+        var expr = term()
+        while (match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL)) {
+            val op = previous()
+            val right = term()
+            expr = Expr.Binary(expr, op, right)
+        }
+        return expr
+    }
+
+    private fun term(): Expr {
+        var expr = factor()
+        while (match(TokenType.MINUS, TokenType.PLUS)) {
+            val op = previous()
+            val right = factor()
+            expr = Expr.Binary(expr, op, right)
+        }
+        return expr
+    }
+
+    private fun factor(): Expr {
+        var expr = unary()
+        while (match(TokenType.SLASH, TokenType.STAR)) {
+            val op = previous()
+            val right = unary()
+            expr = Expr.Binary(expr, op, right)
+        }
+        return expr
+    }
+
+    private fun unary(): Expr {
+        if (match(TokenType.BANG, TokenType.MINUS)) {
+            val op = previous()
+            val right = unary()
+            return Expr.Unary(op, right)
+        }
+        return call()
+    }
+
+    private fun call(): Expr {
+        var expr = primary()
+        while (true) {
+            if (match(TokenType.LEFT_PAREN)) {
+                expr = finishCall(expr)
+            } else {
+                break
+            }
+        }
+        return expr
+    }
+
+    private fun finishCall(callee: Expr): Expr {
+        val arguments = mutableListOf<Expr>()
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                arguments += expression()
+            } while (match(TokenType.COMMA))
+        }
+        val paren = consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
+        return Expr.Call(callee, paren, arguments)
+    }
+
+    private fun primary(): Expr {
+        if (match(TokenType.FALSE)) return Expr.Literal(false)
+        if (match(TokenType.TRUE)) return Expr.Literal(true)
+        if (match(TokenType.NIL)) return Expr.Literal(null)
+
+        if (match(TokenType.NUMBER, TokenType.STRING)) {
+            return Expr.Literal(previous().value)
+        }
+
+        if (match(TokenType.IDENTIFIER)) {
+            return Expr.Variable(previous())
+        }
+
+        if (match(TokenType.LEFT_PAREN)) {
+            val expr = expression()
+            consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
+            return Expr.Grouping(expr)
+        }
+
+        error(peek(), "Expect expression.")
+    }
+
+    // ===== helper overload for match with varargs =====
+
+    private fun match(vararg types: TokenType): Boolean {
+        for (type in types) {
+            if (check(type)) {
+                advance()
+                return true
+            }
+        }
+        return false
+    }
+
 }

@@ -17,3 +17,20 @@ Skills: Alchemy, ElementalMagic, Cooking
 Equipment: Weapon=Staff Armor=Robe Accessory=Rune
 Alignment: Neutral Good
 Magic Affinity: Fire
+
+Character:
+Race: Orc
+Class: Warrior
+Background: Outcast
+Attributes:
+Skills: Tracking, Blacksmithing, TwoHanded
+Equipment: Weapon=Spear Armor=Chainmail Accessory=Ring
+Alignment: Neutral Good
+Magic Affinity: Dark
+
+script:
+var i = 0;
+while (i < 3) {
+    print i;
+    i = i + 1;
+}
