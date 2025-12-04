@@ -1,19 +1,23 @@
 fun main(args: Array<String>) {
-    if (args.isNotEmpty()) {
-        val source = java.io.File(args[0]).readText()
-        run(source)
-        return
-    }
+    try {
+        if (args.isNotEmpty()) {
+            val source = java.io.File(args[0]).readText()
+            run(source)
+            return
+        }
 
-    println("Enter a character description, end with an empty line:")
-    val builder = StringBuilder()
-    while (true) {
-        val line = readLine() ?: break
-        if (line.isBlank()) break
-        builder.appendLine(line)
-    }
+        println("Enter a character description, end with an empty line:")
+        val builder = StringBuilder()
+        while (true) {
+            val line = readLine() ?: break
+            if (line.isBlank()) break
+            builder.appendLine(line)
+        }
 
-    run(builder.toString())
+        run(builder.toString())
+    } catch (e: RuntimeException) {
+        println(e.message)
+    }
 }
 
 fun run(source: String) {
@@ -53,9 +57,9 @@ fun run(source: String) {
         val scriptScanner = Scanner(scriptSource)
         val scriptTokens = scriptScanner.scanTokens()
 
-//        for (t in scriptTokens) {
-//            println("${t.line}: ${t.type} '${t.text}'")
-//        }
+        // for (t in scriptTokens) {
+        //     println("${t.line}: ${t.type} '${t.text}'")
+        // }
 
         val scriptParser = Parser(scriptTokens)
         val scriptStmts = scriptParser.parseScriptProgram()

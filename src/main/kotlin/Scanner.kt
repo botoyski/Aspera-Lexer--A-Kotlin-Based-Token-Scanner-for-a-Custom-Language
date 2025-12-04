@@ -121,6 +121,12 @@ class Scanner(private val source: String) {
 
     private fun number() {
         while (!isAtEnd() && peek().isDigit()) advance()
+
+        if (!isAtEnd() && peek() == '.' && (current + 1 < source.length && source[current + 1].isDigit())) {
+            advance() //
+            while (!isAtEnd() && peek().isDigit()) advance()
+        }
+
         val text = source.substring(start, current)
         val value = text.toDouble()
         tokens.add(Token(TokenType.NUMBER, text, value, line))

@@ -142,7 +142,6 @@ class Interpreter(
             val indexVal = evaluate(expr.index)
 
             val idx = when (indexVal) {
-                is Double -> indexVal.toInt()
                 is Int -> indexVal
                 else -> error("Index must be a number.")
             }
@@ -164,7 +163,6 @@ class Interpreter(
             val newVal = evaluate(expr.value)
 
             val idx = when (indexVal) {
-                is Double -> indexVal.toInt()
                 is Int -> indexVal
                 else -> error("Index must be a number.")
             }
@@ -179,13 +177,10 @@ class Interpreter(
                 error("String index out of bounds.")
             }
 
-            // build new string with one char replaced
             val chars = targetVal.toCharArray()
             chars[idx] = newVal[0]
             val result = String(chars)
 
-            // now we must assign back to the original variable
-            // expr.target should normally be a Variable("string1")
             if (expr.target is Expr.Variable) {
                 environment.assign(expr.target.name, result)
             } else {

@@ -30,6 +30,6 @@ Magic Affinity: Dark
 
 script:
 var string1 = "string";
-string1[1] = "k";
+string1[1.5] = "k";
 
 print string1;
