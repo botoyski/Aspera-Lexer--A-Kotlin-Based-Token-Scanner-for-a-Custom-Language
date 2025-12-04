@@ -14,3 +14,5 @@ sealed interface StmtLang {
         val body: StmtLang                      // { ... }
     ) : StmtLang
 }
+
+data class CharacterStmt(val character: Stmt.Character) : StmtLang

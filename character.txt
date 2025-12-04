@@ -28,8 +28,8 @@ Equipment: Weapon=Spear Armor=Chainmail Accessory=Ring
 Alignment: Neutral Good
 Magic Affinity: Dark
 
-script:
 var string1 = "string";
-string1[1.5] = "k";
+string1[1] = "k";
 
-print string1;
+
+printCharacters();
