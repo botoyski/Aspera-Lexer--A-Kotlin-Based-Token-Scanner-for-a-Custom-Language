@@ -37,6 +37,7 @@ enum class TokenType {
     // single-char tokens used by scripting
     LEFT_PAREN, RIGHT_PAREN,
     LEFT_BRACE, RIGHT_BRACE,
+    LEFT_BRACKET, RIGHT_BRACKET,
     COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
 
     // two-char operators
@@ -50,7 +51,7 @@ enum class TokenType {
 
     // keywords
     AND, OR,
-    IF, ELSE,
+    IF, ELIF, ELSE,
     TRUE, FALSE, NIL,
     VAR, VAL,
     WHILE, FOR,

@@ -264,6 +264,7 @@ class Parser(private val tokens: List<Token>) {
             match(TokenType.PRINT) -> printStmt()
             match(TokenType.IF) -> ifStmt()
             match(TokenType.WHILE) -> whileStmt()
+            match(TokenType.FOR) -> forStmt()
             match(TokenType.LEFT_BRACE) -> StmtLang.Block(block())
             match(TokenType.RETURN) -> returnStmt()
             else -> exprStmt()
@@ -281,8 +282,34 @@ class Parser(private val tokens: List<Token>) {
         val condition = expression()
         consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
         val thenBranch = statement()
-        val elseBranch = if (match(TokenType.ELSE)) statement() else null
+
+        var elseBranch: StmtLang? = null
+        if (match(TokenType.ELIF)) {
+            elseBranch = parseElifChain()
+        } else if (match(TokenType.ELSE)) {
+            elseBranch = statement()
+        }
+
         return StmtLang.If(condition, thenBranch, elseBranch)
+    }
+
+    private fun parseElifChain(): StmtLang {
+        // we are right after having matched ELIF
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'elif'.")
+        val elifCond = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+        val elifThen = statement()
+
+        var elifElse: StmtLang? = null
+        if (match(TokenType.ELIF)) {
+            // another elif: recurse
+            elifElse = parseElifChain()
+        } else if (match(TokenType.ELSE)) {
+            // final else
+            elifElse = statement()
+        }
+
+        return StmtLang.If(elifCond, elifThen, elifElse)
     }
 
     private fun whileStmt(): StmtLang {
@@ -291,6 +318,61 @@ class Parser(private val tokens: List<Token>) {
         consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
         val body = statement()
         return StmtLang.While(condition, body)
+    }
+
+    private fun forStmt(): StmtLang {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
+
+        // Initializer
+        val initializer: StmtLang? =
+            if (match(TokenType.SEMICOLON)) {
+                null
+            } else if (match(TokenType.VAR)) {
+                varDecl()
+            } else {
+                exprStmt()
+            }
+
+        // Condition
+        val condition: Expr? =
+            if (!check(TokenType.SEMICOLON)) {
+                expression()
+            } else {
+                null
+            }
+        consume(TokenType.SEMICOLON, "Expect ';' after loop condition.")
+
+        // Increment
+        val increment: Expr? =
+            if (!check(TokenType.RIGHT_PAREN)) {
+                expression()
+            } else {
+                null
+            }
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.")
+
+        var body = statement()
+
+        // Put increment last if there is a body
+        if (increment != null) {
+            body = StmtLang.Block(
+                listOf(
+                    body,
+                    StmtLang.Expression(increment)
+                )
+            )
+        }
+
+        // If no condition, use true
+        val whileCond = condition ?: Expr.Literal(true)
+
+        // If there is an initializer, wrap everything in a block
+        val whileStmt = StmtLang.While(whileCond, body)
+        return if (initializer != null) {
+            StmtLang.Block(listOf(initializer, whileStmt))
+        } else {
+            whileStmt
+        }
     }
 
     private fun returnStmt(): StmtLang {
@@ -434,6 +516,8 @@ class Parser(private val tokens: List<Token>) {
         while (true) {
             if (match(TokenType.LEFT_PAREN)) {
                 expr = finishCall(expr)
+            } else if (match(TokenType.LEFT_BRACKET)) {
+            expr = finishIndex(expr)
             } else {
                 break
             }
@@ -450,6 +534,13 @@ class Parser(private val tokens: List<Token>) {
         }
         val paren = consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
         return Expr.Call(callee, paren, arguments)
+    }
+
+    private fun finishIndex(target: Expr): Expr {
+        // we are after '['
+        val indexExpr = expression()
+        val bracket = consume(TokenType.RIGHT_BRACKET, "Expect ']' after index.")
+        return Expr.Index(target, indexExpr, bracket)
     }
 
     private fun primary(): Expr {

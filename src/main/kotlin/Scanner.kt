@@ -44,6 +44,8 @@ class Scanner(private val source: String) {
             '+' -> addToken(TokenType.PLUS)
             ';' -> addToken(TokenType.SEMICOLON)
             '*' -> addToken(TokenType.STAR)
+            '[' -> addToken(TokenType.LEFT_BRACKET)
+            ']' -> addToken(TokenType.RIGHT_BRACKET)
 
             '!' -> addToken(if (match('=')) TokenType.BANG_EQUAL else TokenType.BANG)
             '=' -> addToken(if (match('=')) TokenType.EQUAL_EQUAL else TokenType.EQUAL)
@@ -134,7 +136,9 @@ class Scanner(private val source: String) {
             && peek() != '('
             && peek() != ')'
             && peek() != '{'
-            && peek() != '}') {
+            && peek() != '}'
+            && peek() != '['
+            && peek() != ']') {
             advance()
         }
         val raw = source.substring(start, current)
@@ -244,6 +248,7 @@ class Scanner(private val source: String) {
             "nil" -> TokenType.NIL
             "and" -> TokenType.AND
             "or" -> TokenType.OR
+            "elif" -> TokenType.ELIF
 
             else -> null
         }

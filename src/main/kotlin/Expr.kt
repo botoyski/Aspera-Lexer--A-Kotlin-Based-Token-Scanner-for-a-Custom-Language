@@ -7,4 +7,5 @@ sealed interface Expr {
     data class Logical(val left: Expr, val operator: Token, val right: Expr) : Expr
     data class Grouping(val expression: Expr) : Expr
     data class Call(val callee: Expr, val paren: Token, val arguments: List<Expr>) : Expr
+    data class Index(val target: Expr, val index: Expr, val bracket: Token) : Expr
 }

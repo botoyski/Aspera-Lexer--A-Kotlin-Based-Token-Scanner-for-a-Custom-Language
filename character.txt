@@ -29,8 +29,18 @@ Alignment: Neutral Good
 Magic Affinity: Dark
 
 script:
+var string1 = "string";
+var string2 = "";
+var n = len(string1);
 var i = 0;
-while (i < 3) {
-    print i;
-    i = i + 1;
+
+for (i = 0; i < n; i = i + 1) {
+    var ch = string1[i];
+    if (i == 1) {
+        ch = "k";
+    }
+    string2 = concat(string2, ch);
 }
+
+print string1;
+print string2;

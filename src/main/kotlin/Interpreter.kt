@@ -5,19 +5,34 @@ class Interpreter(
     private var environment = globals
 
     init {
-        // native print (if you want)
-        globals.define("clock", object : Callable {
-            override fun arity() = 0
-            override fun call(interpreter: Interpreter, arguments: List<Any?>): Any? =
-                System.currentTimeMillis().toDouble() / 1000.0
-        })
-
         // native stepBattle(): calls your Kotlin battle for one run
         globals.define("stepBattle", object : Callable {
             override fun arity() = 0
             override fun call(interpreter: Interpreter, arguments: List<Any?>): Any? {
                 nativeBattleStep?.invoke()
                 return null
+            }
+        })
+
+        // native len(s): string length
+        globals.define("len", object : Callable {
+            override fun arity() = 1
+            override fun call(interpreter: Interpreter, arguments: List<Any?>): Any? {
+                val s = arguments[0] as? String
+                    ?: error("len: argument must be a string")
+                return s.length.toDouble() // your numbers are Double
+            }
+        })
+
+        // native concat(a, b): concatenate strings
+        globals.define("concat", object : Callable {
+            override fun arity() = 2
+            override fun call(interpreter: Interpreter, arguments: List<Any?>): Any? {
+                val a = arguments[0] as? String
+                    ?: error("concat: first argument must be a string")
+                val b = arguments[1] as? String
+                    ?: error("concat: second argument must be a string")
+                return a + b
             }
         })
     }
@@ -42,6 +57,15 @@ class Interpreter(
             is StmtLang.While -> {
                 while (isTruthy(evaluate(stmt.condition))) {
                     execute(stmt.body)
+                }
+            }
+            is StmtLang.For -> {
+                // run initializer once, if any
+                stmt.initializer?.let { execute(it) }
+                // then loop while condition is true (or forever if null)
+                while (stmt.condition?.let { isTruthy(evaluate(it)) } != false) {
+                    execute(stmt.body)
+                    stmt.increment?.let { evaluate(it) }
                 }
             }
             is StmtLang.Function -> {
@@ -111,6 +135,27 @@ class Interpreter(
             val function = callee as? Callable ?: error("Can only call functions.")
             if (args.size != function.arity()) error("Expected ${function.arity()} args.")
             function.call(this, args)
+        }
+
+        is Expr.Index -> {
+            val targetVal = evaluate(expr.target)
+            val indexVal = evaluate(expr.index)
+
+            val idx = when (indexVal) {
+                is Double -> indexVal.toInt()
+                is Int -> indexVal
+                else -> error("Index must be a number.")
+            }
+
+            when (targetVal) {
+                is String -> {
+                    if (idx < 0 || idx >= targetVal.length) {
+                        error("String index out of bounds.")
+                    }
+                    targetVal[idx].toString()  // return one-character string
+                }
+                else -> error("Indexing is only supported on strings (for now).")
+            }
         }
     }
 
