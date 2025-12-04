@@ -10,8 +10,8 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.Program(characters)
     }
 
+    // Only used from script, CHARACTER_KW already matched.
     private fun parseCharacter(): Stmt.Character {
-        consume(TokenType.CHARACTER_KW, "Expect 'Character:' at start.")
         val race = parseRace()
         val clazz = parseOptionalClass()
         val background = parseOptionalBackground()
@@ -261,6 +261,9 @@ class Parser(private val tokens: List<Token>) {
 
     private fun statement(): StmtLang {
         return when {
+            // NEW: character as a script-level statement
+            match(TokenType.CHARACTER_KW) -> characterStmt()
+
             match(TokenType.PRINT) -> printStmt()
             match(TokenType.IF) -> ifStmt()
             match(TokenType.WHILE) -> whileStmt()
@@ -588,5 +591,13 @@ class Parser(private val tokens: List<Token>) {
         }
         return false
     }
+
+    private fun characterStmt(): StmtLang {
+        // CHARACTER_KW already consumed in statement()
+        val character = parseCharacter()
+        return CharacterStmt(character)
+    }
+
+
 
 }

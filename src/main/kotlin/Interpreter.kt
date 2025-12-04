@@ -4,7 +4,21 @@ class Interpreter(
     private val globals = Environment()
     private var environment = globals
 
+    val scriptCharacters: MutableList<Stmt.Character> = mutableListOf()
     init {
+
+        globals.define("printCharacters", object : Callable {
+            override fun arity() = 0
+            override fun call(interpreter: Interpreter, arguments: List<Any?>): Any?
+            {
+                if (scriptCharacters.isEmpty()) return null
+                val program = Stmt.Program(scriptCharacters.toList())
+                val evaluator = Evaluator()
+                evaluator.execute(program)
+                return null
+            }
+        })
+
         // native stepBattle(): calls your Kotlin battle for one run
         globals.define("stepBattle", object : Callable {
             override fun arity() = 0
@@ -60,9 +74,7 @@ class Interpreter(
                 }
             }
             is StmtLang.For -> {
-                // run initializer once, if any
                 stmt.initializer?.let { execute(it) }
-                // then loop while condition is true (or forever if null)
                 while (stmt.condition?.let { isTruthy(evaluate(it)) } != false) {
                     execute(stmt.body)
                     stmt.increment?.let { evaluate(it) }
@@ -73,8 +85,16 @@ class Interpreter(
                 environment.define(stmt.name.text, function)
             }
             is StmtLang.Return -> throw ReturnException(stmt.value?.let { evaluate(it) })
+
+            // NEW: script-level character statement
+            is CharacterStmt -> {
+                scriptCharacters.add(stmt.character)
+                // Optional: print feedback
+                // println("Script defined character: ${stmt.character.race} ${stmt.character.clazz ?: ""}")
+            }
         }
     }
+
 
     fun executeBlock(statements: List<StmtLang>, env: Environment) {
         val previous = environment
@@ -137,12 +157,18 @@ class Interpreter(
             function.call(this, args)
         }
 
+        // Expr.Index
         is Expr.Index -> {
             val targetVal = evaluate(expr.target)
             val indexVal = evaluate(expr.index)
 
             val idx = when (indexVal) {
-                is Int -> indexVal
+                is Double -> {
+                    if (indexVal % 1.0 != 0.0) {
+                        error("Index must be an integer number.")
+                    }
+                    indexVal.toInt()  // safe: it's an exact integer
+                }
                 else -> error("Index must be a number.")
             }
 
@@ -151,11 +177,12 @@ class Interpreter(
                     if (idx < 0 || idx >= targetVal.length) {
                         error("String index out of bounds.")
                     }
-                    targetVal[idx].toString()  // return one-character string
+                    targetVal[idx].toString()
                 }
                 else -> error("Indexing is only supported on strings (for now).")
             }
         }
+
 
         is Expr.AssignIndex -> {
             val targetVal = evaluate(expr.target)
@@ -163,7 +190,12 @@ class Interpreter(
             val newVal = evaluate(expr.value)
 
             val idx = when (indexVal) {
-                is Int -> indexVal
+                is Double -> {
+                    if (indexVal % 1.0 != 0.0) {
+                        error("Index must be an integer number.")
+                    }
+                    indexVal.toInt()
+                }
                 else -> error("Index must be a number.")
             }
 
@@ -219,5 +251,7 @@ class UserFunction(
         return null
     }
 }
+
+
 
 class ReturnException(val value: Any?) : RuntimeException(null, null, false, false)
