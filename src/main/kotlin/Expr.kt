@@ -8,4 +8,10 @@ sealed interface Expr {
     data class Grouping(val expression: Expr) : Expr
     data class Call(val callee: Expr, val paren: Token, val arguments: List<Expr>) : Expr
     data class Index(val target: Expr, val index: Expr, val bracket: Token) : Expr
+
+    data class AssignIndex(
+        val target: Expr,   // usually a Variable("string1")
+        val index: Expr,    // the index expression
+        val value: Expr     // the new value on right side
+    ) : Expr
 }

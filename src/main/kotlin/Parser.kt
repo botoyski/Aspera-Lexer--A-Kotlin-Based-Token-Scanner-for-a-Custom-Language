@@ -431,14 +431,26 @@ class Parser(private val tokens: List<Token>) {
 
     private fun assignment(): Expr {
         val expr = or()
+
         if (match(TokenType.EQUAL)) {
             val equals = previous()
             val value = assignment()
+
+            // case 1: simple variable, like "x = ...;"
             if (expr is Expr.Variable) {
                 return Expr.Assign(expr.name, value)
             }
+
+            // case 2: index assignment, like "string1[1] = ...;"
+            if (expr is Expr.Index) {
+                // expr.target is expression for "string1"
+                // expr.index is expression for "1"
+                return Expr.AssignIndex(expr.target, expr.index, value)
+            }
+
             error(equals, "Invalid assignment target.")
         }
+
         return expr
     }
 

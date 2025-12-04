@@ -157,6 +157,43 @@ class Interpreter(
                 else -> error("Indexing is only supported on strings (for now).")
             }
         }
+
+        is Expr.AssignIndex -> {
+            val targetVal = evaluate(expr.target)
+            val indexVal = evaluate(expr.index)
+            val newVal = evaluate(expr.value)
+
+            val idx = when (indexVal) {
+                is Double -> indexVal.toInt()
+                is Int -> indexVal
+                else -> error("Index must be a number.")
+            }
+
+            if (targetVal !is String) {
+                error("Index assignment only supported on strings for now.")
+            }
+            if (newVal !is String || newVal.length != 1) {
+                error("Index assignment value must be a single-character string.")
+            }
+            if (idx < 0 || idx >= targetVal.length) {
+                error("String index out of bounds.")
+            }
+
+            // build new string with one char replaced
+            val chars = targetVal.toCharArray()
+            chars[idx] = newVal[0]
+            val result = String(chars)
+
+            // now we must assign back to the original variable
+            // expr.target should normally be a Variable("string1")
+            if (expr.target is Expr.Variable) {
+                environment.assign(expr.target.name, result)
+            } else {
+                error("Left side of index assignment must be a variable.")
+            }
+
+            result
+        }
     }
 
     private fun isTruthy(v: Any?): Boolean = when (v) {
